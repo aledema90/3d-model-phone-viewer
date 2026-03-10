@@ -1,125 +1,314 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>3D Phone Viewer</title>
     <!-- Import map for Three.js ES modules -->
     <script type="importmap">
-    {
+      {
         "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
         }
-    }
+      }
     </script>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
     <div class="app-container">
-        <!-- Control Panel -->
-        <aside class="control-panel">
-            <div class="control-section">
-                <label class="control-label">1. UPLOAD MODEL</label>
-                <div class="file-upload">
-                    <input type="file" id="modelInput" accept=".glb,.gltf" hidden>
-                    <button class="upload-btn" onclick="document.getElementById('modelInput').click()">
-                        Choose File
+      <!-- Control Panel -->
+      <aside class="control-panel">
+        <div class="control-section">
+          <label class="control-label">1. UPLOAD MODEL</label>
+          <div class="file-upload">
+            <input type="file" id="modelInput" accept=".glb,.gltf" hidden />
+            <button
+              class="upload-btn"
+              onclick="document.getElementById('modelInput').click()"
+            >
+              Choose File
+            </button>
+            <span class="file-name" id="fileName">No file selected</span>
+          </div>
+        </div>
+
+        <div class="control-section">
+          <label class="control-label">2. DEVICE SIZE</label>
+          <select id="deviceSelect" class="device-select">
+            <option value="iphone-16-pro" selected>iOS (iPhone 16 Pro)</option>
+            <option value="iphone-14-pro-max">iOS (iPhone 14 Pro Max)</option>
+            <option value="iphone-14">iOS (iPhone 13/14)</option>
+            <option value="iphone-se">iOS (iPhone SE)</option>
+            <option value="pixel-7">Android (Pixel 7)</option>
+            <option value="galaxy-s23">Android (Galaxy S23)</option>
+          </select>
+        </div>
+
+        <div class="control-section">
+          <label class="control-label">3. BACKGROUND</label>
+          <input
+            type="color"
+            id="bgColor"
+            value="#000000"
+            class="color-picker"
+          />
+
+          <div class="bg-mesh-upload" style="margin-top: 12px">
+            <label class="slider-label">Background Mesh (GLB)</label>
+            <div class="file-upload">
+              <input type="file" id="bgMeshInput" accept=".glb,.gltf" hidden />
+              <button
+                class="upload-btn small"
+                onclick="document.getElementById('bgMeshInput').click()"
+              >
+                Load Mesh
+              </button>
+              <span class="file-name" id="bgMeshFileName">No mesh</span>
+            </div>
+            <div class="bg-mesh-controls" style="margin-top: 8px">
+              <label class="checkbox-label">
+                <input type="checkbox" id="bgMeshVisible" checked />
+                <span>Show Background</span>
+              </label>
+              <button
+                class="reset-btn small"
+                id="removeBgMesh"
+                style="margin-top: 6px"
+              >
+                Remove Mesh
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-section">
+          <label class="control-label">4. LIGHTING</label>
+
+          <div class="slider-group">
+            <label class="slider-label"
+              >Main Light <span id="mainValue">1.2</span></label
+            >
+            <input
+              type="range"
+              id="mainSlider"
+              min="0"
+              max="3"
+              step="0.1"
+              value="1.2"
+              class="slider"
+            />
+          </div>
+
+          <div class="slider-group">
+            <label class="slider-label"
+              >Fill Light <span id="fillValue">0.6</span></label
+            >
+            <input
+              type="range"
+              id="fillSlider"
+              min="0"
+              max="2"
+              step="0.1"
+              value="0.6"
+              class="slider"
+            />
+          </div>
+
+          <div class="slider-group">
+            <label class="slider-label"
+              >Rim Light <span id="rimValue">0.4</span></label
+            >
+            <input
+              type="range"
+              id="rimSlider"
+              min="0"
+              max="2"
+              step="0.1"
+              value="0.4"
+              class="slider"
+            />
+          </div>
+        </div>
+
+        <div class="control-section">
+          <label class="control-label">5. CONTROLS</label>
+          <div class="controls-info">
+            <p>🖱️ Left click + drag: Rotate</p>
+            <p>🖱️ Right click + drag: Pan</p>
+            <p>🖱️ Scroll: Zoom</p>
+          </div>
+          <button class="reset-btn" onclick="resetCamera()">Reset View</button>
+        </div>
+      </aside>
+
+      <!-- Phone Preview Area -->
+      <main class="preview-area">
+        <div class="phone-container" id="phoneContainer">
+          <div class="phone-frame" id="phoneFrame">
+            <div class="phone-notch"></div>
+            <div class="safe-zone header-safe-zone">HEADER SAFE ZONE</div>
+            <div class="viewer-container" id="viewerContainer">
+              <canvas id="canvas3d"></canvas>
+              <div class="loading-overlay" id="loadingOverlay">
+                <div class="loading-spinner"></div>
+                <p>Loading model...</p>
+              </div>
+              <div class="drop-zone" id="dropZone">
+                <div class="drop-icon">📦</div>
+                <p>Drop a .glb or .gltf file here</p>
+                <p class="drop-hint">or use the upload button</p>
+              </div>
+
+              <!-- Open Drawer Button (inside phone screen) -->
+              <button class="open-drawer-btn" id="openDrawerBtn">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M3 9h18" />
+                </svg>
+                Open Drawer
+              </button>
+
+              <!-- GIF Drawer (inside phone screen) -->
+              <div class="gif-drawer" id="gifDrawer">
+                <input
+                  type="file"
+                  id="gifInput"
+                  accept="image/gif,image/png"
+                  hidden
+                />
+
+                <!-- Close button overlaid top-right -->
+                <button class="gif-drawer-close" id="gifDrawerClose">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+
+                <!-- GIF image area (full width, top half) -->
+                <div class="gif-image-area" id="gifUploadArea">
+                  <div class="gif-upload-placeholder" id="gifUploadPlaceholder">
+                    <div class="gif-upload-icon">🎞️</div>
+                    <p>Carica una GIF o APNG</p>
+                    <p class="gif-upload-hint">Clicca o trascina qui il file</p>
+                    <button
+                      class="upload-btn small"
+                      onclick="document.getElementById('gifInput').click()"
+                    >
+                      Scegli file
                     </button>
-                    <span class="file-name" id="fileName">No file selected</span>
+                  </div>
+                  <img
+                    id="gifPreview"
+                    src=""
+                    alt="GIF Preview"
+                    style="display: none"
+                  />
                 </div>
-            </div>
 
-            <div class="control-section">
-                <label class="control-label">2. DEVICE SIZE</label>
-                <select id="deviceSelect" class="device-select">
-                    <option value="iphone-14-pro-max">iOS (iPhone 14 Pro Max)</option>
-                    <option value="iphone-14" selected>iOS (iPhone 13/14)</option>
-                    <option value="iphone-se">iOS (iPhone SE)</option>
-                    <option value="pixel-7">Android (Pixel 7)</option>
-                    <option value="galaxy-s23">Android (Galaxy S23)</option>
-                </select>
+                <!-- Bottom content -->
+                <div
+                  class="gif-drawer-footer"
+                  id="gifDrawerFooter"
+                  style="display: none"
+                >
+                  <button class="gif-remove-btn" id="gifRemoveBtn">
+                    ✕ Rimuovi GIF
+                  </button>
+                </div>
+              </div>
             </div>
-
-            <div class="control-section">
-                <label class="control-label">3. BACKGROUND</label>
-                <input type="color" id="bgColor" value="#000000" class="color-picker">
-                
-                <div class="bg-mesh-upload" style="margin-top: 12px;">
-                    <label class="slider-label">Background Mesh (GLB)</label>
-                    <div class="file-upload">
-                        <input type="file" id="bgMeshInput" accept=".glb,.gltf" hidden>
-                        <button class="upload-btn small" onclick="document.getElementById('bgMeshInput').click()">
-                            Load Mesh
-                        </button>
-                        <span class="file-name" id="bgMeshFileName">No mesh</span>
-                    </div>
-                    <div class="bg-mesh-controls" style="margin-top: 8px;">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="bgMeshVisible" checked>
-                            <span>Show Background</span>
-                        </label>
-                        <button class="reset-btn small" id="removeBgMesh" style="margin-top: 6px;">Remove Mesh</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="control-section">
-                <label class="control-label">4. LIGHTING</label>
-                
-                <div class="slider-group">
-                    <label class="slider-label">Main Light <span id="mainValue">1.2</span></label>
-                    <input type="range" id="mainSlider" min="0" max="3" step="0.1" value="1.2" class="slider">
-                </div>
-                
-                <div class="slider-group">
-                    <label class="slider-label">Fill Light <span id="fillValue">0.6</span></label>
-                    <input type="range" id="fillSlider" min="0" max="2" step="0.1" value="0.6" class="slider">
-                </div>
-                
-                <div class="slider-group">
-                    <label class="slider-label">Rim Light <span id="rimValue">0.4</span></label>
-                    <input type="range" id="rimSlider" min="0" max="2" step="0.1" value="0.4" class="slider">
-                </div>
-            </div>
-
-            <div class="control-section">
-                <label class="control-label">5. CONTROLS</label>
-                <div class="controls-info">
-                    <p>🖱️ Left click + drag: Rotate</p>
-                    <p>🖱️ Right click + drag: Pan</p>
-                    <p>🖱️ Scroll: Zoom</p>
-                </div>
-                <button class="reset-btn" onclick="resetCamera()">Reset View</button>
-            </div>
-        </aside>
-
-        <!-- Phone Preview Area -->
-        <main class="preview-area">
-            <div class="phone-container" id="phoneContainer">
-                <div class="phone-frame" id="phoneFrame">
-                    <div class="phone-notch"></div>
-                    <div class="safe-zone header-safe-zone">HEADER SAFE ZONE</div>
-                    <div class="viewer-container" id="viewerContainer">
-                        <canvas id="canvas3d"></canvas>
-                        <div class="loading-overlay" id="loadingOverlay">
-                            <div class="loading-spinner"></div>
-                            <p>Loading model...</p>
-                        </div>
-                        <div class="drop-zone" id="dropZone">
-                            <div class="drop-icon">📦</div>
-                            <p>Drop a .glb or .gltf file here</p>
-                            <p class="drop-hint">or use the upload button</p>
-                        </div>
-                    </div>
-                    <div class="safe-zone footer-safe-zone">FOOTER SAFE ZONE</div>
-                    <div class="phone-home-indicator"></div>
-                </div>
-            </div>
-        </main>
+            <div class="safe-zone footer-safe-zone">FOOTER SAFE ZONE</div>
+            <div class="phone-home-indicator"></div>
+          </div>
+        </div>
+      </main>
     </div>
 
     <!-- Load app as ES module -->
     <script type="module" src="app.js?v=8"></script>
-</body>
+    <script>
+      const openDrawerBtn = document.getElementById("openDrawerBtn");
+      const gifDrawer = document.getElementById("gifDrawer");
+      const gifDrawerClose = document.getElementById("gifDrawerClose");
+      const gifInput = document.getElementById("gifInput");
+      const gifPreview = document.getElementById("gifPreview");
+      const gifDrawerFooter = document.getElementById("gifDrawerFooter");
+      const gifUploadPlaceholder = document.getElementById(
+        "gifUploadPlaceholder",
+      );
+      const gifRemoveBtn = document.getElementById("gifRemoveBtn");
+      const gifUploadArea = document.getElementById("gifUploadArea");
+
+      function openDrawer() {
+        gifDrawer.classList.add("open");
+        openDrawerBtn.style.opacity = "0";
+        openDrawerBtn.style.pointerEvents = "none";
+      }
+
+      function closeDrawer() {
+        gifDrawer.classList.remove("open");
+        openDrawerBtn.style.opacity = "1";
+        openDrawerBtn.style.pointerEvents = "auto";
+      }
+
+      openDrawerBtn.addEventListener("click", openDrawer);
+      gifDrawerClose.addEventListener("click", closeDrawer);
+
+      function loadGif(file) {
+        if (!file || (file.type !== "image/gif" && file.type !== "image/png"))
+          return;
+        const url = URL.createObjectURL(file);
+        gifPreview.src = url;
+        gifPreview.style.display = "block";
+        gifUploadPlaceholder.style.display = "none";
+        gifDrawerFooter.style.display = "flex";
+      }
+
+      gifInput.addEventListener("change", (e) => {
+        if (e.target.files[0]) loadGif(e.target.files[0]);
+      });
+
+      gifRemoveBtn.addEventListener("click", () => {
+        gifPreview.src = "";
+        gifPreview.style.display = "none";
+        gifUploadPlaceholder.style.display = "flex";
+        gifDrawerFooter.style.display = "none";
+        gifInput.value = "";
+      });
+
+      // Drag & drop sul drawer
+      gifUploadArea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        gifUploadArea.classList.add("drag-over");
+      });
+      gifUploadArea.addEventListener("dragleave", () => {
+        gifUploadArea.classList.remove("drag-over");
+      });
+      gifUploadArea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        gifUploadArea.classList.remove("drag-over");
+        const file = e.dataTransfer.files[0];
+        if (file) loadGif(file);
+      });
+    </script>
+  </body>
 </html>
